@@ -33,9 +33,14 @@ const PixelGrid: React.FC<PixelGridProps> = ({
     canvas.width = width * scale;
     canvas.height = height * scale;
 
-    // Clear canvas with a "board" color (very light gray usually)
-    ctx.fillStyle = '#ffffff'; 
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Clear canvas with transparent or white
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Only fill white if it's default variant, plain allows full transparency
+    if (variant === 'default') {
+       ctx.fillStyle = '#ffffff'; 
+       ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     // Draw Pixels
     pixels.forEach((hex, index) => {
@@ -47,10 +52,10 @@ const PixelGrid: React.FC<PixelGridProps> = ({
 
       if (hex === 'TRANSPARENT' || !hex) {
         // DRAW PEGBOARD STYLE: Empty circle (peg)
-        ctx.strokeStyle = '#e2e8f0'; // light slate for the peg ring
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#cbd5e1'; // slate-300 for the peg ring
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(cx, cy, radius * 0.6, 0, Math.PI * 2);
+        ctx.arc(cx, cy, radius * 0.5, 0, Math.PI * 2);
         ctx.stroke();
       } else {
         // DRAW BEAD
@@ -111,7 +116,7 @@ const PixelGrid: React.FC<PixelGridProps> = ({
       }
     }
 
-  }, [grid, showGridLines, scale]);
+  }, [grid, showGridLines, scale, variant]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onPixelClick || !canvasRef.current) return;
@@ -145,12 +150,11 @@ const PixelGrid: React.FC<PixelGridProps> = ({
   }
 
   return (
-    <div className={`overflow-auto flex justify-center bg-white rounded-lg shadow-inner p-4 border border-slate-200 ${className}`}>
+    <div className={`w-full h-full overflow-auto flex justify-center items-center bg-white p-4 ${className}`}>
       <canvas 
         ref={canvasRef} 
         onClick={handleCanvasClick}
-        className="cursor-crosshair"
-        style={{ maxWidth: '100%' }}
+        className="cursor-crosshair shadow-sm"
       />
     </div>
   );

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useRef } from 'react';
 import Header from './components/Header';
 import PixelGrid from './components/PixelGrid';
@@ -18,7 +17,8 @@ import {
   ZoomIn, 
   X,
   Layers,
-  SplitSquareHorizontal
+  SplitSquareHorizontal,
+  Maximize2
 } from 'lucide-react';
 
 type ViewMode = 'pattern' | 'original' | 'compare';
@@ -281,7 +281,7 @@ function App() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
                <div className="h-8 w-1/3 bg-slate-200 rounded animate-pulse"></div>
-               <div className="aspect-square w-full bg-slate-100 rounded-xl relative overflow-hidden border border-slate-200">
+               <div className="h-[550px] w-full bg-slate-100 rounded-xl relative overflow-hidden border border-slate-200">
                   {/* Shimmer Effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-full h-full -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3">
@@ -289,7 +289,6 @@ function App() {
                       <p className="font-medium text-indigo-900/50 animate-pulse tracking-wide">{t.loading}</p>
                   </div>
                </div>
-               <div className="h-24 bg-slate-100 rounded-xl border border-slate-200 animate-pulse"></div>
             </div>
             <div className="lg:col-span-1">
                <div className="h-full bg-white rounded-xl border border-slate-200 p-6 space-y-4">
@@ -332,85 +331,57 @@ function App() {
                   </div>
                </div>
                
-               {/* Dynamic View Content */}
-               <div className="relative bg-white rounded-lg shadow-inner border border-slate-200 overflow-hidden">
+               {/* Dynamic View Content - Fixed Height Container */}
+               <div className="relative bg-slate-50 rounded-xl shadow-inner border border-slate-200 overflow-hidden h-[550px] flex flex-col">
                   
                   {viewMode === 'pattern' && (
-                    <PixelGrid grid={currentPattern.grid} />
+                    <div className="flex-1 w-full h-full overflow-hidden relative">
+                       {/* PixelGrid handles its own scrolling if needed */}
+                       <PixelGrid grid={currentPattern.grid} className="w-full h-full" />
+                    </div>
                   )}
 
                   {viewMode === 'original' && (
-                    <div className="p-4 flex justify-center items-center bg-slate-50 min-h-[400px]">
-                       <img src={currentPattern.imageUrl} className="max-w-full max-h-[500px] object-contain shadow-sm rounded" alt="original" />
+                    <div className="flex-1 p-8 flex justify-center items-center w-full h-full">
+                       <img 
+                         src={currentPattern.imageUrl} 
+                         className="max-w-full max-h-full object-contain shadow-lg rounded-lg bg-white" 
+                         alt="original" 
+                       />
                     </div>
                   )}
 
                   {viewMode === 'compare' && (
-                    <div className="p-4 bg-slate-50 min-h-[400px]">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                    <div className="flex-1 p-4 w-full h-full flex flex-col">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
                           {/* Original */}
-                          <div className="flex flex-col gap-2">
-                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded">{t.viewOriginal}</span>
-                             <div className="bg-white p-2 rounded border border-slate-200 shadow-sm aspect-square flex items-center justify-center">
+                          <div className="flex flex-col gap-2 h-full">
+                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewOriginal}</span>
+                             <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden">
                                 <img src={currentPattern.imageUrl} className="max-w-full max-h-full object-contain" alt="original" />
                              </div>
                           </div>
                           {/* Pattern */}
-                          <div className="flex flex-col gap-2">
-                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded">{t.viewPattern}</span>
-                             <div className="bg-white p-2 rounded border border-slate-200 shadow-sm aspect-square flex items-center justify-center overflow-hidden">
+                          <div className="flex flex-col gap-2 h-full">
+                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewPattern}</span>
+                             <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden relative">
                                 <PixelGrid 
                                    grid={currentPattern.grid} 
                                    showGridLines={false} 
                                    variant="plain" 
-                                   className="w-full h-full object-contain" 
+                                   className="w-full h-full object-contain"
                                 />
                              </div>
                           </div>
                         </div>
-                        <div className="mt-4 text-center">
-                           <span className="bg-black/60 text-white text-xs px-3 py-1 rounded-full font-medium backdrop-blur-sm">
+                        <div className="mt-3 text-center shrink-0">
+                           <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-bold">
                               {t.compareTip}
                            </span>
                         </div>
                     </div>
                   )}
                </div>
-               
-               {/* Zoom Tool (Always available below) */}
-               {viewMode !== 'compare' && (
-                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div 
-                        className="relative group cursor-zoom-in h-16 w-16"
-                        onClick={() => setIsLightboxOpen(true)}
-                      >
-                        <img 
-                          src={currentPattern.imageUrl} 
-                          className="h-full w-full rounded border border-slate-200 object-contain bg-slate-50" 
-                          alt="source" 
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center">
-                            <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity" />
-                        </div>
-                      </div>
-                      <div className="flex flex-col">
-                        <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider mb-0.5">{t.sourceTitle}</h3>
-                        <p className="text-sm text-slate-600 italic line-clamp-1 max-w-[200px]" title={currentPattern.name}>
-                          "{currentPattern.name}"
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <button 
-                      onClick={() => setIsLightboxOpen(true)}
-                      className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition-colors"
-                    >
-                      <ZoomIn size={14} />
-                      {t.zoom}
-                    </button>
-                 </div>
-               )}
             </div>
 
             {/* Right: BOM */}

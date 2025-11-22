@@ -92,7 +92,8 @@ const isFeatureColor = (hex: string): boolean => {
    const name = p.name.toLowerCase();
    if (name.includes('pink') || name.includes('red') || name.includes('rose') || name.includes('bubblegum')) return true;
    if (name === 'white') return true; // Eye highlights
-   // NOTE: We do NOT include Black here, Black is handled by outline logic separately
+   // Include Black as feature to protect small eyes/details from being averaged out
+   if (name === 'black') return true; 
    return false;
 }
 
@@ -183,11 +184,12 @@ export const processImageToGrid = (
 
           const validSamples = totalSamples - transparentSamples || 1;
 
-          // Priority 1: Features (Pink Ears)
+          // Priority 1: Features (Pink Ears, Black Eyes)
           let featureWinner: string | null = null;
           let maxFeatureCount = 0;
           for (const [hex, count] of Object.entries(colorCounts)) {
              if (isFeatureColor(hex) && hex !== bgColor) {
+                // Lower threshold (15%) to catch small details like eyes
                 if (count / validSamples > 0.15 && count > maxFeatureCount) {
                    maxFeatureCount = count;
                    featureWinner = hex;
