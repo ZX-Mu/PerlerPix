@@ -5,60 +5,88 @@ import { LibraryItem } from './types';
 export const BEAD_SIZE_MM = 2.6; // Mini beads standard
 
 export const GRID_SIZES = [
-  { label: 'Small (16x16)', value: 16 },
-  { label: 'Medium (32x32)', value: 32 },
-  { label: 'Large (48x48)', value: 48 },
-  { label: 'Extra Large (64x64)', value: 64 },
-  { label: 'Detailed (80x80)', value: 80 },
+  { value: 29, key: 'grid29' },
+  { value: 32, key: 'grid32' },
+  { value: 48, key: 'grid48' },
+  { value: 50, key: 'grid50' },
+  { value: 64, key: 'grid64' },
+  { value: 80, key: 'grid80' },
 ];
 
-// A realistic palette based on popular Perler/Hama/Artkal colors
-// This improves accuracy by mapping to real physical colors
+// V12 Expert Palette
+// A comprehensive palette based on Perler/Artkal systems for professional shading.
 export const PERLER_PALETTE = [
+  // Grayscale / Neutrals
   { hex: '#000000', name: 'Black' },
   { hex: '#FFFFFF', name: 'White' },
   { hex: '#888888', name: 'Grey' },
+  { hex: '#555555', name: 'Dark Grey' }, // Vital for outlines
   { hex: '#C0C0C0', name: 'Light Grey' },
-  { hex: '#555555', name: 'Dark Grey' },
-  { hex: '#E4E4E4', name: 'Clear' },
+  { hex: '#E4E4E4', name: 'Clear' }, // Transparent placeholder
+
+  // Browns / Skin Tones (Crucial for Animals)
+  { hex: '#683F23', name: 'Dark Brown' },
   { hex: '#A05F35', name: 'Brown' },
   { hex: '#D4A467', name: 'Light Brown' },
-  { hex: '#683F23', name: 'Dark Brown' },
   { hex: '#CFA876', name: 'Tan' },
   { hex: '#F0E68C', name: 'Sand' },
+  { hex: '#F5F5DC', name: 'Cream' }, // Chest/Belly
+  { hex: '#DEB887', name: 'Burlywood' },
   { hex: '#ECCDB1', name: 'Flesh' },
   { hex: '#FFDAB9', name: 'Peach' },
+  { hex: '#E3963E', name: 'Butterscotch' }, // Golden Retrievers/Corgis
+  { hex: '#D2B48C', name: 'Toasted Marshmallow' }, // Transition color
+  { hex: '#F5DEB3', name: 'Wheat' },
+  { hex: '#8B4513', name: 'Saddle Brown' },
+  { hex: '#B7410E', name: 'Rust' }, // Deep shadows
+
+  // Reds / Pinks
   { hex: '#FF0000', name: 'Red' },
   { hex: '#8B0000', name: 'Dark Red' },
   { hex: '#FA8072', name: 'Salmon' },
-  { hex: '#FF69B4', name: 'Hot Pink' },
   { hex: '#FFC0CB', name: 'Pink' },
-  { hex: '#F7A8B8', name: 'Light Pink' },
+  { hex: '#FF69B4', name: 'Hot Pink' },
   { hex: '#E05395', name: 'Raspberry' },
-  { hex: '#800080', name: 'Purple' },
-  { hex: '#DDA0DD', name: 'Plum' },
-  { hex: '#9370DB', name: 'Pastel Lavender' },
-  { hex: '#4B0082', name: 'Indigo' },
+  { hex: '#FFB7C5', name: 'Bubblegum' }, // Ears inner color
+  { hex: '#F7A8B8', name: 'Light Pink' },
+
+  // Oranges / Yellows
+  { hex: '#FFA500', name: 'Orange' },
+  { hex: '#FF8C00', name: 'Dark Orange' }, // Standard Corgi
+  { hex: '#F9A602', name: 'Cheddar' }, // Vibrant Orange
+  { hex: '#FFA07A', name: 'Light Salmon' },
+  { hex: '#FFFF00', name: 'Yellow' },
+  { hex: '#F0E632', name: 'Pastel Yellow' },
+  { hex: '#FFD700', name: 'Gold' },
+
+  // Greens
+  { hex: '#008000', name: 'Green' },
+  { hex: '#006400', name: 'Dark Green' },
+  { hex: '#32CD32', name: 'Lime Green' },
+  { hex: '#90EE90', name: 'Light Green' },
+  { hex: '#98FB98', name: 'Pale Green' },
+  { hex: '#556B2F', name: 'Olive' },
+  { hex: '#808000', name: 'Olive Drab' },
+  { hex: '#ADFF2F', name: 'Green Yellow' },
+  { hex: '#7CFC00', name: 'Lawn Green' },
+
+  // Blues / Teals
   { hex: '#0000FF', name: 'Blue' },
   { hex: '#00008B', name: 'Dark Blue' },
-  { hex: '#87CEEB', name: 'Light Blue' },
   { hex: '#4169E1', name: 'Royal Blue' },
+  { hex: '#87CEEB', name: 'Light Blue' },
   { hex: '#00FFFF', name: 'Cyan' },
   { hex: '#40E0D0', name: 'Turquoise' },
   { hex: '#008080', name: 'Teal' },
-  { hex: '#008000', name: 'Green' },
-  { hex: '#006400', name: 'Dark Green' },
-  { hex: '#90EE90', name: 'Light Green' },
-  { hex: '#32CD32', name: 'Lime Green' },
-  { hex: '#556B2F', name: 'Olive' },
-  { hex: '#FFFF00', name: 'Yellow' },
-  { hex: '#F0E632', name: 'Pastel Yellow' },
-  { hex: '#FFA500', name: 'Orange' },
-  { hex: '#FF8C00', name: 'Dark Orange' },
-  { hex: '#FFA07A', name: 'Light Salmon' },
-  { hex: '#F5F5DC', name: 'Cream' },
+  { hex: '#2F4F4F', name: 'Dark Slate Grey' },
+  { hex: '#708090', name: 'Slate Grey' },
+
+  // Purples
+  { hex: '#800080', name: 'Purple' },
+  { hex: '#4B0082', name: 'Indigo' },
+  { hex: '#DDA0DD', name: 'Plum' },
+  { hex: '#9370DB', name: 'Pastel Lavender' },
   { hex: '#E6E6FA', name: 'Lavender' },
-  { hex: '#98FB98', name: 'Pale Green' },
 ];
 
 export const TRANSLATIONS = {
@@ -90,6 +118,16 @@ export const TRANSLATIONS = {
     errorGen: "Failed to generate pattern.",
     useTemplate: "Load",
     zoom: "Zoom",
+    grid29: "Standard Small (29x29)",
+    grid32: "Medium (32x32)",
+    grid48: "Large (48x48)",
+    grid50: "Standard Plate (50x50)",
+    grid64: "Extra Large (64x64)",
+    grid80: "Detailed (80x80)",
+    viewPattern: "Pattern",
+    viewOriginal: "Original",
+    viewCompare: "Compare",
+    compareTip: "Side-by-side comparison",
   },
   zh: {
     title: "PerlerPix",
@@ -119,6 +157,16 @@ export const TRANSLATIONS = {
     errorGen: "图纸生成失败",
     useTemplate: "使用",
     zoom: "查看大图",
+    grid29: "标准小板 (29x29)",
+    grid32: "中号 (32x32)",
+    grid48: "大号 (48x48)",
+    grid50: "标准大板 (50x50)",
+    grid64: "标准大板 (64x64)",
+    grid80: "精细 (80x80)",
+    viewPattern: "图纸",
+    viewOriginal: "原图",
+    viewCompare: "对比",
+    compareTip: "左右对比查看",
   }
 };
 

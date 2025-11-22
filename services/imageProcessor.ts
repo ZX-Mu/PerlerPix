@@ -2,7 +2,40 @@
 import { GridData, PaletteColor, RgbColor } from '../types';
 import { PERLER_PALETTE } from '../constants';
 
-// Helper to convert Hex to RGB
+// --- Helper: Color Space Conversions ---
+
+const rgbToLab = (r: number, g: number, b: number) => {
+  let r_ = r / 255, g_ = g / 255, b_ = b / 255;
+
+  if (r_ > 0.04045) r_ = Math.pow((r_ + 0.055) / 1.055, 2.4);
+  else r_ = r_ / 12.92;
+  if (g_ > 0.04045) g_ = Math.pow((g_ + 0.055) / 1.055, 2.4);
+  else g_ = g_ / 12.92;
+  if (b_ > 0.04045) b_ = Math.pow((b_ + 0.055) / 1.055, 2.4);
+  else b_ = b_ / 12.92;
+
+  r_ *= 100; g_ *= 100; b_ *= 100;
+
+  const x = r_ * 0.4124 + g_ * 0.3576 + b_ * 0.1805;
+  const y = r_ * 0.2126 + g_ * 0.7152 + b_ * 0.0722;
+  const z = r_ * 0.0193 + g_ * 0.1192 + b_ * 0.9505;
+
+  let x_ = x / 95.047, y_ = y / 100.000, z_ = z / 108.883;
+
+  if (x_ > 0.008856) x_ = Math.pow(x_, 1.0/3);
+  else x_ = (7.787 * x_) + (16 / 116);
+  if (y_ > 0.008856) y_ = Math.pow(y_, 1.0/3);
+  else y_ = (7.787 * y_) + (16 / 116);
+  if (z_ > 0.008856) z_ = Math.pow(z_, 1.0/3);
+  else z_ = (7.787 * z_) + (16 / 116);
+
+  const L = (116 * y_) - 16;
+  const a = 500 * (x_ - y_);
+  const beta = 200 * (y_ - z_);
+
+  return { L, a, b: beta };
+};
+
 const hexToRgb = (hex: string): RgbColor => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
@@ -12,47 +45,59 @@ const hexToRgb = (hex: string): RgbColor => {
   } : { r: 0, g: 0, b: 0 };
 };
 
-// Improved Color Distance using Redmean approximation
-// Matches human color perception better than Euclidean
-const colorDistance = (c1: RgbColor, c2: RgbColor) => {
-  const rmean = (c1.r + c2.r) / 2;
-  const r = c1.r - c2.r;
-  const g = c1.g - c2.g;
-  const b = c1.b - c2.b;
-  return Math.sqrt((((512 + rmean) * r * r) >> 8) + 4 * g * g + (((767 - rmean) * b * b) >> 8));
-};
+// Pre-calculate Palette in LAB
+const PALETTE_LAB = PERLER_PALETTE.map(p => {
+  const rgb = hexToRgb(p.hex);
+  const lab = rgbToLab(rgb.r, rgb.g, rgb.b);
+  return { ...p, rgb, lab };
+});
 
-// Pre-calculate RGB for palette
-const PALETTE_RGB = PERLER_PALETTE.map(p => ({
-  ...p,
-  rgb: hexToRgb(p.hex)
-}));
+// --- Core Logic: Advanced Color Matching ---
 
-// Find closest color in the palette
-const findClosestPaletteColor = (r: number, g: number, b: number): string => {
-  let closestHex = PALETTE_RGB[0].hex;
-  let minDistance = Infinity;
-  const target = { r, g, b };
+const findBestBead = (r: number, g: number, b: number): string => {
+  const targetLab = rgbToLab(r, g, b);
+  
+  let bestHex = PALETTE_LAB[0].hex;
+  let minScore = Infinity;
 
-  for (const color of PALETTE_RGB) {
-    const dist = colorDistance(target, color.rgb);
-    if (dist < minDistance) {
-      minDistance = dist;
-      closestHex = color.hex;
+  for (const bead of PALETTE_LAB) {
+    // Standard CIELAB Euclidean Distance
+    const dL = targetLab.L - bead.lab.L;
+    const da = targetLab.a - bead.lab.a;
+    const db = targetLab.b - bead.lab.b;
+    
+    const dist = (dL * dL) + (da * da) + (db * db);
+
+    if (dist < minScore) {
+      minScore = dist;
+      bestHex = bead.hex;
     }
   }
-  return closestHex;
+  
+  return bestHex;
 };
 
-/**
- * Process image using Center-Weighted Voting.
- * 
- * Improvements:
- * 1. Center Weighting: Pixels near the center of the bead (grid cell) count more.
- *    This reduces "jitter" on edges where the grid doesn't align perfectly.
- * 2. Stricter Alpha: We ignore semi-transparent pixels (anti-aliasing) to prevent
- *    weird "halo" colors (e.g. pink edge on a red hat).
- */
+// V15: Ultra Strict Outline. 
+// Threshold < 35 means only near-pitch-black pixels are outlines.
+// Dark Brown (L~30-40) might still trigger, so we check if it's ACTUALLY black.
+const isOutlineColor = (hex: string): boolean => {
+  const rgb = hexToRgb(hex);
+  const y = (rgb.r * 0.299 + rgb.g * 0.587 + rgb.b * 0.114);
+  return y < 35; 
+};
+
+const isFeatureColor = (hex: string): boolean => {
+   const p = PERLER_PALETTE.find(x => x.hex === hex);
+   if (!p) return false;
+   const name = p.name.toLowerCase();
+   if (name.includes('pink') || name.includes('red') || name.includes('rose') || name.includes('bubblegum')) return true;
+   if (name === 'white') return true; // Eye highlights
+   // NOTE: We do NOT include Black here, Black is handled by outline logic separately
+   return false;
+}
+
+// --- Image Processing Pipeline ---
+
 export const processImageToGrid = (
   imageUrl: string,
   gridSize: number
@@ -76,126 +121,239 @@ export const processImageToGrid = (
       canvas.width = w;
       canvas.height = h;
       
-      // Draw original image
+      // No contrast boost to prevent crushing shadows into black outlines
       ctx.drawImage(img, 0, 0);
+
       const imageData = ctx.getImageData(0, 0, w, h);
       const data = imageData.data;
-
-      // Calculate dimensions
+      
       const aspect = w / h;
       let targetW = gridSize;
       let targetH = gridSize;
-
-      if (aspect > 1) {
-        targetH = Math.round(gridSize / aspect);
-      } else {
-        targetW = Math.round(gridSize * aspect);
-      }
+      if (aspect > 1) targetH = Math.round(gridSize / aspect);
+      else targetW = Math.round(gridSize * aspect);
 
       const blockW = w / targetW;
       const blockH = h / targetH;
 
-      const pixels: string[] = [];
-      const colorCounts: Record<string, number> = {};
+      const rawPixels: string[] = [];
 
-      // Iterate through the target grid (the beads)
+      // Background Detection
+      const getPixelHex = (x: number, y: number) => findBestBead(data[(y*w+x)*4], data[(y*w+x)*4+1], data[(y*w+x)*4+2]);
+      const corners = [getPixelHex(0,0), getPixelHex(w-1,0), getPixelHex(0,h-1), getPixelHex(w-1,h-1)];
+      const bgCounts: Record<string,number> = {};
+      corners.forEach(c => bgCounts[c] = (bgCounts[c]||0)+1);
+      const bgColor = Object.keys(bgCounts).reduce((a, b) => bgCounts[a] > bgCounts[b] ? a : b);
+
+      // 4. Downsampling
       for (let y = 0; y < targetH; y++) {
         for (let x = 0; x < targetW; x++) {
-          // Calculate block bounds in source image
-          const startX = x * blockW;
-          const startY = y * blockH;
-          const endX = Math.min(w, (x + 1) * blockW);
-          const endY = Math.min(h, (y + 1) * blockH);
+          const startX = Math.floor(x * blockW);
+          const startY = Math.floor(y * blockH);
+          const endX = Math.floor(Math.min(w, (x + 1) * blockW));
+          const endY = Math.floor(Math.min(h, (y + 1) * blockH));
           
-          const centerX = startX + blockW / 2;
-          const centerY = startY + blockH / 2;
+          const colorCounts: Record<string, number> = {};
+          let totalSamples = 0;
+          let transparentSamples = 0;
+          let outlineSamples = 0;
 
-          // Weighted Voting System
-          const votes: Record<string, number> = {};
-          let maxScore = 0;
-          let winnerHex = 'TRANSPARENT';
+          const padX = Math.max(0, Math.floor((endX - startX) * 0.2));
+          const padY = Math.max(0, Math.floor((endY - startY) * 0.2));
 
-          // Optimization: Sample smartly based on block size
-          // We don't need to check every single pixel if the image is 4K and beads are huge.
-          // But we need enough density to catch details.
-          const stepX = Math.max(1, Math.floor(blockW / 8));
-          const stepY = Math.max(1, Math.floor(blockH / 8));
-
-          for (let py = Math.floor(startY); py < endY; py += stepY) {
-            for (let px = Math.floor(startX); px < endX; px += stepX) {
+          for (let py = startY + padX; py < endY - padY; py++) {
+            for (let px = startX + padX; px < endX - padX; px++) {
               const i = (py * w + px) * 4;
-              const alpha = data[i + 3];
-
-              // STRICT ALPHA THRESHOLD (180/255 approx 70%)
-              // We ignore semi-transparent pixels (anti-aliasing edges) to avoid 
-              // mixing foreground and background colors into a muddy 3rd color.
-              if (alpha < 180) {
-                 votes['TRANSPARENT'] = (votes['TRANSPARENT'] || 0) + 1; 
-                 continue;
+              const alpha = data[i+3];
+              if (alpha < 128) {
+                transparentSamples++;
+              } else {
+                const bead = findBestBead(data[i], data[i+1], data[i+2]);
+                colorCounts[bead] = (colorCounts[bead] || 0) + 1;
+                if (isOutlineColor(bead)) outlineSamples++;
               }
-
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
-              
-              // CENTER WEIGHTING
-              // Calculate distance from the center of the bead
-              const dx = (px - centerX) / (blockW / 2); 
-              const dy = (py - centerY) / (blockH / 2);
-              const distSq = dx*dx + dy*dy; // Squared distance (0 at center, ~1 at edge)
-              
-              // Gaussian-like weight: Drops off as we get further from center
-              // This ensures the bead represents the "core" of the area, not the fringe.
-              const weight = Math.exp(-distSq * 2); 
-
-              const closest = findClosestPaletteColor(r, g, b);
-              votes[closest] = (votes[closest] || 0) + weight;
+              totalSamples++;
             }
           }
 
-          // Determine winner
-          for (const [hex, score] of Object.entries(votes)) {
-            if (score > maxScore) {
-              maxScore = score;
-              winnerHex = hex;
-            }
+          if (transparentSamples > totalSamples * 0.6) {
+             rawPixels.push('TRANSPARENT');
+             continue;
           }
 
-          if (winnerHex !== 'TRANSPARENT') {
-            pixels.push(winnerHex);
-            colorCounts[winnerHex] = (colorCounts[winnerHex] || 0) + 1;
-          } else {
-            pixels.push('TRANSPARENT');
+          const validSamples = totalSamples - transparentSamples || 1;
+
+          // Priority 1: Features (Pink Ears)
+          let featureWinner: string | null = null;
+          let maxFeatureCount = 0;
+          for (const [hex, count] of Object.entries(colorCounts)) {
+             if (isFeatureColor(hex) && hex !== bgColor) {
+                if (count / validSamples > 0.15 && count > maxFeatureCount) {
+                   maxFeatureCount = count;
+                   featureWinner = hex;
+                }
+             }
           }
+          if (featureWinner) {
+             rawPixels.push(featureWinner);
+             continue;
+          }
+
+          // Priority 2: Outlines (Black)
+          // Strict Check: Must be > 20% and really dark
+          if ((outlineSamples / validSamples > 0.20) && bgColor !== '#000000') {
+             rawPixels.push('#000000'); 
+             continue;
+          }
+
+          // Priority 3: Dominant Color
+          let winner = 'TRANSPARENT';
+          let maxVotes = 0;
+          for (const [hex, count] of Object.entries(colorCounts)) {
+            if (count > maxVotes) {
+              maxVotes = count;
+              winner = hex;
+            }
+          }
+          if (winner === 'TRANSPARENT' && Object.keys(colorCounts).length > 0) winner = Object.keys(colorCounts)[0];
+          
+          rawPixels.push(winner);
         }
       }
 
-      // Build active palette
-      const activePalette: PaletteColor[] = [];
-      const sortedHexes = Object.keys(colorCounts).sort((a, b) => colorCounts[b] - colorCounts[a]);
+      // 5. Topology Protection (Anti-Leak)
+      // We create a "Safety Mask" by dilating the dark pixels to close gaps.
+      // Then we calculate background on THIS safe mask, but apply it to the original.
+      const safetyGrid = sealOutlines(rawPixels, targetW, targetH, true); // aggressive seal
+      const isBg = calculateBackgroundMap(safetyGrid, targetW, targetH, bgColor);
 
-      sortedHexes.forEach((hex, index) => {
-        const originalRef = PERLER_PALETTE.find(p => p.hex === hex);
-        const rgb = hexToRgb(hex);
-        activePalette.push({
-          ...rgb,
-          hex,
-          name: originalRef ? originalRef.name : 'Unknown',
-          count: colorCounts[hex],
-          id: `bead-${index}`
-        });
+      const finalPixels = rawPixels.map((p, i) => {
+         if (isBg[i]) return 'TRANSPARENT';
+         // If not background, but was transparent, it means it's inside (belly)
+         if (p === 'TRANSPARENT' || p === bgColor) return '#FFFFFF'; 
+         return p;
+      });
+      
+      // 6. Despeckle
+      const cleaned = despeckleGrid(finalPixels, targetW, targetH);
+
+      const paletteCounts: Record<string, number> = {};
+      cleaned.forEach(hex => {
+        if (hex !== 'TRANSPARENT') paletteCounts[hex] = (paletteCounts[hex] || 0) + 1;
       });
 
+      const activePalette: PaletteColor[] = [];
+      Object.entries(paletteCounts)
+        .sort(([,a], [,b]) => b - a)
+        .forEach(([hex, count], idx) => {
+           const ref = PERLER_PALETTE.find(p => p.hex === hex);
+           const rgb = hexToRgb(hex);
+           activePalette.push({
+             ...rgb,
+             hex,
+             name: ref?.name || 'Unknown',
+             count,
+             id: `bead-${idx}`
+           });
+        });
+
       resolve({
-        grid: {
-          width: targetW,
-          height: targetH,
-          pixels
-        },
+        grid: { width: targetW, height: targetH, pixels: cleaned },
         palette: activePalette
       });
     };
-
-    img.onerror = (err) => reject(err);
+    img.onerror = (e) => reject(e);
   });
+};
+
+// --- Topology Helpers ---
+
+const sealOutlines = (pixels: string[], w: number, h: number, aggressive: boolean = false): string[] => {
+  const res = [...pixels];
+  const isOut = (i: number) => i >= 0 && i < pixels.length && isOutlineColor(pixels[i]);
+  
+  // Aggressive mode: Dilate all black pixels to close small gaps
+  if (aggressive) {
+    for (let i = 0; i < pixels.length; i++) {
+       if (isOut(i)) {
+          const neighbors = [i+1, i-1, i+w, i-w, i+w+1, i+w-1, i-w+1, i-w-1];
+          neighbors.forEach(n => {
+             if (n>=0 && n<pixels.length && pixels[n] !== '#000000') res[n] = '#000000';
+          });
+       }
+    }
+  } else {
+    // Standard diagonal seal
+    for (let y = 0; y < h - 1; y++) {
+      for (let x = 0; x < w - 1; x++) {
+        const i = y * w + x;
+        const right = i + 1;
+        const bottom = i + w;
+        const bottomRight = i + w + 1;
+        if (isOut(i) && isOut(bottomRight) && !isOut(right) && !isOut(bottom)) res[right] = '#000000';
+        if (isOut(right) && isOut(bottom) && !isOut(i) && !isOut(bottomRight)) res[i] = '#000000';
+      }
+    }
+  }
+  return res;
+};
+
+const calculateBackgroundMap = (pixels: string[], w: number, h: number, bgColor: string): boolean[] => {
+  const isBg = new Array(pixels.length).fill(false);
+  const queue: number[] = [];
+  
+  const visit = (i: number) => {
+     if (i < 0 || i >= pixels.length) return;
+     if (isBg[i]) return;
+     // If it's transparent or the background color, it's traversable
+     // BUT NOT if it's a feature/outline (which acts as a wall)
+     if (isOutlineColor(pixels[i])) return; // Wall
+     
+     isBg[i] = true;
+     queue.push(i);
+  };
+
+  // Start from borders
+  for(let x=0; x<w; x++) { visit(x); visit((h-1)*w+x); }
+  for(let y=1; y<h-1; y++) { visit(y*w); visit(y*w + w - 1); }
+
+  let head = 0;
+  while(head < queue.length) {
+    const idx = queue[head++];
+    const n = [idx-1, idx+1, idx-w, idx+w];
+    n.forEach(visit);
+  }
+  return isBg;
+};
+
+const despeckleGrid = (pixels: string[], w: number, h: number): string[] => {
+  const res = [...pixels];
+  for(let y=1; y<h-1; y++) {
+      for(let x=1; x<w-1; x++) {
+          const i = y*w+x;
+          const c = res[i];
+          if(c === 'TRANSPARENT') continue;
+          if(isOutlineColor(c) || isFeatureColor(c)) continue; // Don't remove features
+
+          const n = [
+              res[y*w + x-1], res[y*w + x+1],
+              res[(y-1)*w + x], res[(y+1)*w + x]
+          ].filter(x => x !== 'TRANSPARENT');
+          
+          if(n.length === 0) continue;
+          
+          const isOrphan = n.every(neighbor => neighbor !== c);
+          if(isOrphan) {
+             const counts: Record<string,number> = {};
+             let maxC = n[0];
+             let maxV = 0;
+             n.forEach(x => {
+                 counts[x] = (counts[x]||0)+1;
+                 if(counts[x]>maxV) { maxV=counts[x]; maxC=x; }
+             });
+             if (!isOutlineColor(maxC)) res[i] = maxC;
+          }
+      }
+  }
+  return res;
 };

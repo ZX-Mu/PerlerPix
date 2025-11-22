@@ -9,18 +9,31 @@ import { generatePatternImage } from './services/gemini';
 import { processImageToGrid } from './services/imageProcessor';
 import { Pattern, GenerationMode, HistoryItem, Language } from './types';
 import { GRID_SIZES, TRANSLATIONS } from './constants';
-import { Wand2, Image as ImageIcon, History as HistoryIcon, AlertCircle, Loader2, ZoomIn, X } from 'lucide-react';
+import { 
+  Wand2, 
+  Image as ImageIcon, 
+  History as HistoryIcon, 
+  AlertCircle, 
+  Loader2, 
+  ZoomIn, 
+  X,
+  Layers,
+  SplitSquareHorizontal
+} from 'lucide-react';
+
+type ViewMode = 'pattern' | 'original' | 'compare';
 
 function App() {
   const [lang, setLang] = useState<Language>('zh');
   const [mode, setMode] = useState<GenerationMode>('text');
   const [prompt, setPrompt] = useState('');
-  const [gridSize, setGridSize] = useState(32);
+  const [gridSize, setGridSize] = useState(48);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPattern, setCurrentPattern] = useState<Pattern | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('pattern');
   
   const t = TRANSLATIONS[lang];
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,9 +51,8 @@ function App() {
     if (!prompt.trim()) return;
     setIsLoading(true);
     setError(null);
-    // Reset current pattern immediately to show loading state nicely if desired, 
-    // or keep it until new one is ready. Showing loading state is clearer.
-    setCurrentPattern(null); 
+    setCurrentPattern(null);
+    setViewMode('pattern'); // Reset view
     
     try {
       const base64Image = await generatePatternImage(prompt);
@@ -75,6 +87,7 @@ function App() {
           setIsLoading(true);
           setError(null);
           setCurrentPattern(null);
+          setViewMode('pattern'); // Reset view
 
           try {
             const imageUrl = event.target.result as string;
@@ -105,6 +118,7 @@ function App() {
 
   const handleHistorySelect = (item: HistoryItem) => {
     setCurrentPattern(item);
+    setViewMode('pattern');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -199,7 +213,9 @@ function App() {
                       className="bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
                     >
                       {GRID_SIZES.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
+                        <option key={s.value} value={s.value}>
+                          {(t as any)[s.key]}
+                        </option>
                       ))}
                     </select>
                  </div>
@@ -293,47 +309,108 @@ function App() {
             <div className="lg:col-span-2 space-y-6">
                <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-slate-900">{t.previewTitle}</h2>
-                  <div className="flex gap-2">
-                    <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded text-sm font-mono">
-                      {currentPattern.grid.width}x{currentPattern.grid.height}
-                    </span>
+                  {/* View Mode Tabs */}
+                  <div className="flex bg-slate-100 p-1 rounded-lg">
+                     <button 
+                        onClick={() => setViewMode('pattern')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'pattern' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                     >
+                        <Layers size={14} /> {t.viewPattern}
+                     </button>
+                     <button 
+                        onClick={() => setViewMode('original')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                     >
+                        <ImageIcon size={14} /> {t.viewOriginal}
+                     </button>
+                     <button 
+                        onClick={() => setViewMode('compare')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'compare' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                     >
+                        <SplitSquareHorizontal size={14} /> {t.viewCompare}
+                     </button>
                   </div>
                </div>
                
-               <PixelGrid grid={currentPattern.grid} />
+               {/* Dynamic View Content */}
+               <div className="relative bg-white rounded-lg shadow-inner border border-slate-200 overflow-hidden">
+                  
+                  {viewMode === 'pattern' && (
+                    <PixelGrid grid={currentPattern.grid} />
+                  )}
+
+                  {viewMode === 'original' && (
+                    <div className="p-4 flex justify-center items-center bg-slate-50 min-h-[400px]">
+                       <img src={currentPattern.imageUrl} className="max-w-full max-h-[500px] object-contain shadow-sm rounded" alt="original" />
+                    </div>
+                  )}
+
+                  {viewMode === 'compare' && (
+                    <div className="p-4 bg-slate-50 min-h-[400px]">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                          {/* Original */}
+                          <div className="flex flex-col gap-2">
+                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded">{t.viewOriginal}</span>
+                             <div className="bg-white p-2 rounded border border-slate-200 shadow-sm aspect-square flex items-center justify-center">
+                                <img src={currentPattern.imageUrl} className="max-w-full max-h-full object-contain" alt="original" />
+                             </div>
+                          </div>
+                          {/* Pattern */}
+                          <div className="flex flex-col gap-2">
+                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded">{t.viewPattern}</span>
+                             <div className="bg-white p-2 rounded border border-slate-200 shadow-sm aspect-square flex items-center justify-center overflow-hidden">
+                                <PixelGrid 
+                                   grid={currentPattern.grid} 
+                                   showGridLines={false} 
+                                   variant="plain" 
+                                   className="w-full h-full object-contain" 
+                                />
+                             </div>
+                          </div>
+                        </div>
+                        <div className="mt-4 text-center">
+                           <span className="bg-black/60 text-white text-xs px-3 py-1 rounded-full font-medium backdrop-blur-sm">
+                              {t.compareTip}
+                           </span>
+                        </div>
+                    </div>
+                  )}
+               </div>
                
-               {/* Source Image Block - Zoomable */}
-               <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div 
-                      className="relative group cursor-zoom-in h-16 w-16"
-                      onClick={() => setIsLightboxOpen(true)}
-                    >
-                      <img 
-                        src={currentPattern.imageUrl} 
-                        className="h-full w-full rounded border border-slate-200 object-contain bg-slate-50" 
-                        alt="source" 
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center">
-                          <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity" />
+               {/* Zoom Tool (Always available below) */}
+               {viewMode !== 'compare' && (
+                 <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div 
+                        className="relative group cursor-zoom-in h-16 w-16"
+                        onClick={() => setIsLightboxOpen(true)}
+                      >
+                        <img 
+                          src={currentPattern.imageUrl} 
+                          className="h-full w-full rounded border border-slate-200 object-contain bg-slate-50" 
+                          alt="source" 
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded flex items-center justify-center">
+                            <ZoomIn size={20} className="text-white opacity-0 group-hover:opacity-100 drop-shadow-md transition-opacity" />
+                        </div>
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider mb-0.5">{t.sourceTitle}</h3>
+                        <p className="text-sm text-slate-600 italic line-clamp-1 max-w-[200px]" title={currentPattern.name}>
+                          "{currentPattern.name}"
+                        </p>
                       </div>
                     </div>
-                    <div className="flex flex-col">
-                      <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider mb-0.5">{t.sourceTitle}</h3>
-                      <p className="text-sm text-slate-600 italic line-clamp-1 max-w-[200px]" title={currentPattern.name}>
-                        "{currentPattern.name}"
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setIsLightboxOpen(true)}
-                    className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition-colors"
-                  >
-                    <ZoomIn size={14} />
-                    {t.zoom}
-                  </button>
-               </div>
+                    
+                    <button 
+                      onClick={() => setIsLightboxOpen(true)}
+                      className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-full transition-colors"
+                    >
+                      <ZoomIn size={14} />
+                      {t.zoom}
+                    </button>
+                 </div>
+               )}
             </div>
 
             {/* Right: BOM */}
