@@ -33,6 +33,8 @@ export type GenerationMode = 'text' | 'image' | 'history';
 
 export type Language = 'zh' | 'en';
 
+export type Theme = 'light' | 'dark' | 'system';
+
 export interface HistoryItem extends Pattern {}
 
 export interface LibraryItem {

@@ -46,27 +46,27 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-full flex flex-col relative">
+    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 h-full flex flex-col relative transition-colors">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-bold text-slate-900">{t.bomTitle}</h2>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t.bomTitle}</h2>
         <div className="flex gap-2">
-          <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-md">
+          <span className="px-2 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold rounded-md">
             {totalBeads} Beads
           </span>
         </div>
       </div>
       
-      <p className="text-xs text-slate-400 mb-4 flex items-center gap-1">
+      <p className="text-xs text-slate-400 dark:text-slate-500 mb-4 flex items-center gap-1">
          <Paintbrush size={12} /> 点击颜色行开启画笔，点击 <RefreshCcw size={10} className="inline" /> 批量替换
       </p>
 
-      <div className="bg-slate-50 rounded-lg p-4 mb-6 flex items-center gap-4 border border-slate-100">
-        <div className="bg-white p-2 rounded-full shadow-sm text-indigo-600">
+      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-6 flex items-center gap-4 border border-slate-100 dark:border-slate-700/50">
+        <div className="bg-white dark:bg-slate-800 p-2 rounded-full shadow-sm text-indigo-600 dark:text-indigo-400">
           <Ruler size={20} />
         </div>
         <div>
-          <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">{t.finishedSize} (2.6mm)</p>
-          <p className="text-sm font-semibold text-slate-800">{widthCm}cm x {heightCm}cm</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">{t.finishedSize} (2.6mm)</p>
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">{widthCm}cm x {heightCm}cm</p>
         </div>
       </div>
 
@@ -76,30 +76,30 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
           return (
             <div 
               key={color.id} 
-              className={`flex items-center justify-between group p-2 rounded-lg transition-all cursor-pointer border-l-4 ${isSelected ? 'bg-indigo-50 border-l-indigo-500 shadow-sm' : 'hover:bg-slate-50 border-l-transparent hover:border-l-slate-300'}`}
+              className={`flex items-center justify-between group p-2 rounded-lg transition-all cursor-pointer border-l-4 ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-indigo-500 shadow-sm' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-transparent hover:border-l-slate-300 dark:hover:border-l-slate-600'}`}
               onClick={() => onSelectColor && onSelectColor(color.hex)}
             >
               <div className="flex items-center gap-3">
                 <div 
-                  className="w-8 h-8 rounded-full border border-slate-200 shadow-sm relative flex items-center justify-center"
+                  className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm relative flex items-center justify-center"
                   style={{ backgroundColor: color.hex }}
                 >
-                  <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-black/5"></div>
+                  <div className="absolute inset-0 rounded-full ring-1 ring-inset ring-black/5 dark:ring-white/10"></div>
                   {isSelected && <Paintbrush size={14} className={color.r + color.g + color.b > 400 ? 'text-black' : 'text-white'} />}
                 </div>
                 <div className="flex flex-col">
-                  <span className={`text-sm font-bold ${isSelected ? 'text-indigo-900' : 'text-slate-800'}`}>{color.name}</span>
-                  <span className="text-[10px] text-slate-400 uppercase">{color.hex}</span>
+                  <span className={`text-sm font-bold ${isSelected ? 'text-indigo-900 dark:text-indigo-200' : 'text-slate-800 dark:text-slate-200'}`}>{color.name}</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase">{color.hex}</span>
                 </div>
               </div>
               
               <div className="flex items-center gap-2">
-                 <span className={`font-mono text-sm font-bold px-2 py-0.5 rounded ${isSelected ? 'bg-white text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                 <span className={`font-mono text-sm font-bold px-2 py-0.5 rounded ${isSelected ? 'bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400'}`}>
                    x{color.count}
                  </span>
                  
                  <button
-                    className={`p-1.5 rounded-md hover:bg-white hover:shadow-sm transition-all ${isSelected ? 'text-indigo-400 hover:text-indigo-600' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100'}`}
+                    className={`p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm transition-all ${isSelected ? 'text-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-300' : 'text-slate-300 hover:text-indigo-500 opacity-0 group-hover:opacity-100'}`}
                     onClick={(e) => {
                        e.stopPropagation();
                        setEditingColor(color);
@@ -116,7 +116,7 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
       
       <button 
         onClick={downloadCSV}
-        className="mt-6 flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-sm font-semibold transition-all"
+        className="mt-6 flex items-center justify-center gap-2 w-full py-2.5 bg-slate-900 dark:bg-indigo-600 hover:bg-slate-800 dark:hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-all"
       >
         <Download size={16} />
         {t.exportCsv}
@@ -124,18 +124,18 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
 
       {/* Color Picker Modal */}
       {editingColor && (
-        <div className="absolute inset-0 z-20 bg-white rounded-xl flex flex-col p-4 animate-in fade-in zoom-in-95 duration-200 border border-slate-200 shadow-lg">
-           <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100">
+        <div className="absolute inset-0 z-20 bg-white dark:bg-slate-900 rounded-xl flex flex-col p-4 animate-in fade-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800 shadow-lg">
+           <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div>
-                <h3 className="font-bold text-slate-800">替换颜色</h3>
+                <h3 className="font-bold text-slate-800 dark:text-white">替换颜色</h3>
                 <div className="flex items-center gap-2 mt-1">
-                   <div className="w-3 h-3 rounded-full border border-slate-200" style={{background: editingColor.hex}}></div>
-                   <p className="text-xs text-slate-500">将 <span className="font-medium text-slate-700">{editingColor.name}</span> 替换为...</p>
+                   <div className="w-3 h-3 rounded-full border border-slate-200 dark:border-slate-700" style={{background: editingColor.hex}}></div>
+                   <p className="text-xs text-slate-500 dark:text-slate-400">将 <span className="font-medium text-slate-700 dark:text-slate-300">{editingColor.name}</span> 替换为...</p>
                 </div>
               </div>
               <button 
                 onClick={() => setEditingColor(null)}
-                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -146,7 +146,7 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
               <input 
                 type="text" 
                 placeholder="搜索颜色名称..." 
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white dark:placeholder-slate-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -157,17 +157,17 @@ const BillOfMaterials: React.FC<Props> = ({ palette, grid, lang, onColorReplace,
                  <button
                    key={p.hex}
                    onClick={() => handleReplace(p.hex)}
-                   className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all group"
+                   className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group"
                    title={p.name}
                  >
-                    <div className="w-8 h-8 rounded-full border border-slate-200 shadow-sm relative" style={{background: p.hex}}>
+                    <div className="w-8 h-8 rounded-full border border-slate-200 dark:border-slate-700 shadow-sm relative" style={{background: p.hex}}>
                        {p.hex === editingColor.hex && (
                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-full">
                              <div className="w-2 h-2 bg-white rounded-full"></div>
                           </div>
                        )}
                     </div>
-                    <span className="text-[10px] text-slate-500 text-center line-clamp-1 w-full group-hover:text-slate-900">{p.name}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 text-center line-clamp-1 w-full group-hover:text-slate-900 dark:group-hover:text-white">{p.name}</span>
                  </button>
               ))}
            </div>

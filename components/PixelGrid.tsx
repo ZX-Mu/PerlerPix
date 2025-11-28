@@ -150,7 +150,7 @@ const PixelGrid: React.FC<PixelGridProps> = ({
   }
 
   return (
-    <div className={`w-full h-full overflow-auto flex justify-center items-center bg-white p-4 ${className}`}>
+    <div className={`w-full h-full overflow-auto flex justify-center items-center bg-white dark:bg-slate-900 transition-colors p-4 ${className}`}>
       <canvas 
         ref={canvasRef} 
         onClick={handleCanvasClick}

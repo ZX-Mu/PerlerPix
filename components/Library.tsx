@@ -13,9 +13,9 @@ const Library: React.FC<Props> = ({ onSelect }) => {
         <div 
           key={item.id}
           onClick={() => onSelect(item)}
-          className="group bg-white rounded-xl border border-slate-200 overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+          className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
         >
-          <div className="aspect-square overflow-hidden bg-slate-100 relative">
+          <div className="aspect-square overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
             <img 
               src={item.imageUrl} 
               alt={item.title}
@@ -27,12 +27,12 @@ const Library: React.FC<Props> = ({ onSelect }) => {
           </div>
           <div className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <h3 className="font-bold text-slate-900">{item.title}</h3>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full">
+              <h3 className="font-bold text-slate-900 dark:text-slate-100">{item.title}</h3>
+              <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-full">
                 {item.category}
               </span>
             </div>
-            <p className="text-sm text-slate-500 line-clamp-2">{item.description}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">{item.description}</p>
           </div>
         </div>
       ))}

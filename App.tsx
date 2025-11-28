@@ -1,11 +1,13 @@
-import React, { useState, useRef } from 'react';
+
+
+import React, { useState, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import PixelGrid from './components/PixelGrid';
 import BillOfMaterials from './components/BillOfMaterials';
 import History from './components/History';
 import { generatePatternImage } from './services/gemini';
 import { processImageToGrid } from './services/imageProcessor';
-import { Pattern, GenerationMode, HistoryItem, Language, PaletteColor } from './types';
+import { Pattern, GenerationMode, HistoryItem, Language, PaletteColor, Theme } from './types';
 import { GRID_SIZES, TRANSLATIONS, PERLER_PALETTE } from './constants';
 import { 
   Wand2, 
@@ -36,8 +38,41 @@ function App() {
   const [viewMode, setViewMode] = useState<ViewMode>('pattern');
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
+  // Theme state
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('theme') as Theme) || 'system';
+    }
+    return 'system';
+  });
+
   const t = TRANSLATIONS[lang];
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Apply theme effect
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const applyTheme = () => {
+       const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+       const isDark = theme === 'dark' || (theme === 'system' && systemDark);
+       
+       if (isDark) {
+         root.classList.add('dark');
+       } else {
+         root.classList.remove('dark');
+       }
+    };
+
+    applyTheme();
+    localStorage.setItem('theme', theme);
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme();
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    }
+  }, [theme]);
 
   const addToHistory = (pattern: Pattern) => {
     setHistory(prev => {
@@ -181,7 +216,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20">
+    <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 transition-colors">
       <style>{`
         @keyframes shimmer {
           100% { transform: translateX(100%); }
@@ -192,7 +227,7 @@ function App() {
         }
       `}</style>
 
-      <Header lang={lang} setLang={setLang} />
+      <Header lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} />
 
       {isLightboxOpen && currentPattern && (
         <div 
@@ -217,22 +252,22 @@ function App() {
         </div>
       )}
 
-      <div className="bg-gradient-to-b from-indigo-600 to-indigo-800 text-white py-16 px-4 text-center relative overflow-hidden">
+      <div className="bg-gradient-to-b from-indigo-600 to-indigo-800 dark:from-indigo-900 dark:to-slate-900 text-white py-16 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/pixel-weave.png')]"></div>
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 relative z-10">
           {t.heroTitle} <span className="text-yellow-300">{t.heroHighlight}</span>
         </h1>
-        <p className="text-indigo-100 text-lg max-w-2xl mx-auto relative z-10">
+        <p className="text-indigo-100 dark:text-indigo-200 text-lg max-w-2xl mx-auto relative z-10">
           {t.heroDesc}
         </p>
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20" id="generator">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-1 mb-8">
-          <div className="flex border-b border-slate-100">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-1 mb-8 transition-colors">
+          <div className="flex border-b border-slate-100 dark:border-slate-800">
             <button 
               onClick={() => setMode('text')}
-              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'text' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'text' ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <Wand2 size={18} />
               <span className="hidden sm:inline">{t.modeText}</span>
@@ -240,7 +275,7 @@ function App() {
             </button>
             <button 
               onClick={() => setMode('image')}
-              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'image' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'image' ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <ImageIcon size={18} />
               <span className="hidden sm:inline">{t.modeImage}</span>
@@ -248,7 +283,7 @@ function App() {
             </button>
             <button 
               onClick={() => setMode('history')}
-              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'history' ? 'text-indigo-600 bg-indigo-50/50' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-4 px-2 sm:px-6 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${mode === 'history' ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/20' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <HistoryIcon size={18} />
               <span className="hidden sm:inline">{t.modeHistory}</span>
@@ -260,11 +295,11 @@ function App() {
             {mode !== 'history' && (
               <div className="flex flex-wrap gap-6 mb-6 items-center">
                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <label className="text-sm font-bold text-slate-700 whitespace-nowrap">{t.gridLabel}</label>
+                    <label className="text-sm font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">{t.gridLabel}</label>
                     <select 
                       value={gridSize}
                       onChange={(e) => setGridSize(Number(e.target.value))}
-                      className="bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
+                      className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5"
                     >
                       {GRID_SIZES.map(s => (
                         <option key={s.value} value={s.value}>
@@ -283,13 +318,13 @@ function App() {
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={t.promptPlaceholder}
-                  className="flex-1 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-800 placeholder-slate-400 shadow-sm"
+                  className="flex-1 p-4 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
                   onKeyDown={(e) => e.key === 'Enter' && handleGenerateText()}
                 />
                 <button 
                   onClick={handleGenerateText}
                   disabled={isLoading || !prompt.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 min-w-[140px] justify-center"
+                  className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500 disabled:bg-indigo-300 dark:disabled:bg-indigo-800/50 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all flex items-center gap-2 min-w-[140px] justify-center"
                 >
                   {isLoading ? <Loader2 className="animate-spin" /> : <Wand2 size={20} />}
                   {t.generateBtn}
@@ -298,7 +333,7 @@ function App() {
             )}
 
             {mode === 'image' && (
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 text-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <input 
                   type="file" 
                   ref={fileInputRef} 
@@ -306,11 +341,11 @@ function App() {
                   accept="image/*" 
                   onChange={handleImageUpload}
                 />
-                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4">
                   {isLoading ? <Loader2 className="animate-spin" /> : <ImageIcon size={32} />}
                 </div>
-                <h3 className="text-lg font-bold text-slate-700">{t.uploadTitle}</h3>
-                <p className="text-slate-500 mt-1">{t.uploadDesc}</p>
+                <h3 className="text-lg font-bold text-slate-700 dark:text-slate-200">{t.uploadTitle}</h3>
+                <p className="text-slate-500 dark:text-slate-400 mt-1">{t.uploadDesc}</p>
               </div>
             )}
 
@@ -321,7 +356,7 @@ function App() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r mb-8 flex items-center gap-3 text-red-700">
+          <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-r mb-8 flex items-center gap-3 text-red-700 dark:text-red-400">
              <AlertCircle size={20} />
              <p>{error}</p>
           </div>
@@ -330,21 +365,21 @@ function App() {
         {isLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-               <div className="h-8 w-1/3 bg-slate-200 rounded animate-pulse"></div>
-               <div className="h-[550px] w-full bg-slate-100 rounded-xl relative overflow-hidden border border-slate-200">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-full h-full -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3">
+               <div className="h-8 w-1/3 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+               <div className="h-[550px] w-full bg-slate-100 dark:bg-slate-800 rounded-xl relative overflow-hidden border border-slate-200 dark:border-slate-700">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 dark:via-white/5 to-transparent w-full h-full -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 gap-3">
                       <Loader2 className="animate-spin text-indigo-400" size={48} />
-                      <p className="font-medium text-indigo-900/50 animate-pulse tracking-wide">{t.loading}</p>
+                      <p className="font-medium text-indigo-900/50 dark:text-indigo-300/50 animate-pulse tracking-wide">{t.loading}</p>
                   </div>
                </div>
             </div>
             <div className="lg:col-span-1">
-               <div className="h-full bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-                  <div className="h-6 w-1/2 bg-slate-200 rounded animate-pulse"></div>
+               <div className="h-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 space-y-4">
+                  <div className="h-6 w-1/2 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
                   <div className="space-y-2 mt-8">
                      {[1,2,3,4,5,6,7,8].map(i => (
-                       <div key={i} className="h-8 bg-slate-100 rounded animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
+                       <div key={i} className="h-8 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" style={{ animationDelay: `${i * 100}ms` }}></div>
                      ))}
                   </div>
                </div>
@@ -354,34 +389,34 @@ function App() {
           <div key={currentPattern.id} className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-[fadeIn_0.6s_ease-out]">
             <div className="lg:col-span-2 space-y-6">
                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">{t.previewTitle}</h2>
-                  <div className="flex bg-slate-100 p-1 rounded-lg">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t.previewTitle}</h2>
+                  <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                      <button 
                         onClick={() => setViewMode('pattern')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'pattern' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'pattern' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                      >
                         <Layers size={14} /> {t.viewPattern}
                      </button>
                      <button 
                         onClick={() => setViewMode('original')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'original' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                      >
                         <ImageIcon size={14} /> {t.viewOriginal}
                      </button>
                      <button 
                         onClick={() => setViewMode('compare')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'compare' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-bold transition-all ${viewMode === 'compare' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                      >
                         <SplitSquareHorizontal size={14} /> {t.viewCompare}
                      </button>
                   </div>
                </div>
                
-               <div className="relative bg-slate-50 rounded-xl shadow-inner border border-slate-200 overflow-hidden h-[550px] flex flex-col group">
+               <div className="relative bg-slate-50 dark:bg-slate-800/50 rounded-xl shadow-inner border border-slate-200 dark:border-slate-800 overflow-hidden h-[550px] flex flex-col group">
                   
                   {/* PAINT MODE TOOLBAR - FULL WIDTH BOTTOM */}
                   {selectedColor && viewMode === 'pattern' && (
-                    <div className="absolute bottom-0 left-0 right-0 z-30 bg-slate-900/95 text-white p-4 backdrop-blur-md animate-in slide-in-from-bottom-full flex items-center justify-between shadow-lg">
+                    <div className="absolute bottom-0 left-0 right-0 z-30 bg-slate-900/95 dark:bg-black/95 text-white p-4 backdrop-blur-md animate-in slide-in-from-bottom-full flex items-center justify-between shadow-lg">
                        <div className="flex items-center gap-4">
                           <div className="flex flex-col">
                              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">当前模式</span>
@@ -444,9 +479,9 @@ function App() {
                     <div className="flex-1 p-4 w-full h-full flex flex-col">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
                           <div className="flex flex-col gap-2 h-full">
-                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewOriginal}</span>
+                             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase text-center bg-slate-200/50 dark:bg-slate-700/50 py-1 rounded shrink-0">{t.viewOriginal}</span>
                              <div 
-                                className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden cursor-zoom-in group/orig relative"
+                                className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1 flex items-center justify-center overflow-hidden cursor-zoom-in group/orig relative"
                                 onClick={() => setIsLightboxOpen(true)}
                              >
                                 <img src={currentPattern.imageUrl} className="max-w-full max-h-full object-contain" alt="original" />
@@ -458,8 +493,8 @@ function App() {
                              </div>
                           </div>
                           <div className="flex flex-col gap-2 h-full">
-                             <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewPattern}</span>
-                             <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden relative">
+                             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase text-center bg-slate-200/50 dark:bg-slate-700/50 py-1 rounded shrink-0">{t.viewPattern}</span>
+                             <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex-1 flex items-center justify-center overflow-hidden relative">
                                 <PixelGrid 
                                    grid={currentPattern.grid} 
                                    showGridLines={false} 
