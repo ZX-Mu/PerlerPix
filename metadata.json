@@ -1,5 +1,5 @@
 {
-  "name": "Copy of PerlerPix - 拼豆图纸生成器",
+  "name": "PerlerPix - 拼豆图纸生成器",
   "description": "A creative tool to generate Perler bead (拼豆) patterns from text or images using Gemini AI. Create, edit, and export pixel art blueprints.",
   "requestFramePermissions": []
 }
