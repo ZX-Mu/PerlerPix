@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import Header from './components/Header';
 import PixelGrid from './components/PixelGrid';
@@ -6,19 +5,20 @@ import BillOfMaterials from './components/BillOfMaterials';
 import History from './components/History';
 import { generatePatternImage } from './services/gemini';
 import { processImageToGrid } from './services/imageProcessor';
-import { Pattern, GenerationMode, HistoryItem, Language } from './types';
-import { GRID_SIZES, TRANSLATIONS } from './constants';
+import { Pattern, GenerationMode, HistoryItem, Language, PaletteColor } from './types';
+import { GRID_SIZES, TRANSLATIONS, PERLER_PALETTE } from './constants';
 import { 
   Wand2, 
   Image as ImageIcon, 
   History as HistoryIcon, 
   AlertCircle, 
   Loader2, 
-  ZoomIn, 
   X,
   Layers,
   SplitSquareHorizontal,
-  Maximize2
+  Maximize2,
+  Paintbrush,
+  Check
 } from 'lucide-react';
 
 type ViewMode = 'pattern' | 'original' | 'compare';
@@ -34,17 +34,70 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('pattern');
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
   const t = TRANSLATIONS[lang];
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to add to history
   const addToHistory = (pattern: Pattern) => {
     setHistory(prev => {
-      // Avoid duplicates if editing same ID
       const filtered = prev.filter(p => p.id !== pattern.id);
       return [pattern, ...filtered];
     });
+  };
+
+  const updatePatternState = (newPixels: string[]) => {
+    if (!currentPattern) return;
+
+    const paletteCounts: Record<string, number> = {};
+    newPixels.forEach(hex => {
+      if (hex !== 'TRANSPARENT') paletteCounts[hex] = (paletteCounts[hex] || 0) + 1;
+    });
+
+    const activePalette: PaletteColor[] = [];
+    Object.entries(paletteCounts)
+      .sort(([,a], [,b]) => b - a)
+      .forEach(([hex, count], idx) => {
+          const ref = PERLER_PALETTE.find(p => p.hex === hex);
+          const r = parseInt(hex.slice(1, 3), 16);
+          const g = parseInt(hex.slice(3, 5), 16);
+          const b = parseInt(hex.slice(5, 7), 16);
+          
+          activePalette.push({
+            r, g, b,
+            hex,
+            name: ref?.name || 'Custom',
+            count,
+            id: `bead-${idx}`
+          });
+      });
+
+    const updatedPattern = {
+      ...currentPattern,
+      grid: { ...currentPattern.grid, pixels: newPixels },
+      palette: activePalette
+    };
+
+    setCurrentPattern(updatedPattern);
+    setHistory(prev => prev.map(p => p.id === updatedPattern.id ? updatedPattern : p));
+  };
+
+  const handleColorReplace = (oldHex: string, newHex: string) => {
+    if (!currentPattern) return;
+    const newPixels = currentPattern.grid.pixels.map(p => p === oldHex ? newHex : p);
+    updatePatternState(newPixels);
+  };
+
+  const handlePixelClick = (x: number, y: number) => {
+    if (!currentPattern || !selectedColor) return;
+    if (viewMode !== 'pattern') return;
+
+    const index = y * currentPattern.grid.width + x;
+    if (index >= 0 && index < currentPattern.grid.pixels.length) {
+       const newPixels = [...currentPattern.grid.pixels];
+       newPixels[index] = selectedColor;
+       updatePatternState(newPixels);
+    }
   };
 
   const handleGenerateText = async () => {
@@ -52,7 +105,7 @@ function App() {
     setIsLoading(true);
     setError(null);
     setCurrentPattern(null);
-    setViewMode('pattern'); // Reset view
+    setViewMode('pattern'); 
     
     try {
       const base64Image = await generatePatternImage(prompt);
@@ -87,7 +140,7 @@ function App() {
           setIsLoading(true);
           setError(null);
           setCurrentPattern(null);
-          setViewMode('pattern'); // Reset view
+          setViewMode('pattern'); 
 
           try {
             const imageUrl = event.target.result as string;
@@ -122,6 +175,11 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const getSelectedColorName = () => {
+    if (!selectedColor) return '';
+    return PERLER_PALETTE.find(p => p.hex === selectedColor)?.name || selectedColor;
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 pb-20">
       <style>{`
@@ -136,7 +194,6 @@ function App() {
 
       <Header lang={lang} setLang={setLang} />
 
-      {/* Lightbox Overlay */}
       {isLightboxOpen && currentPattern && (
         <div 
           className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]"
@@ -160,7 +217,6 @@ function App() {
         </div>
       )}
 
-      {/* Hero Section */}
       <div className="bg-gradient-to-b from-indigo-600 to-indigo-800 text-white py-16 px-4 text-center relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/pixel-weave.png')]"></div>
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 relative z-10">
@@ -172,7 +228,6 @@ function App() {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-20" id="generator">
-        {/* Control Panel */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-1 mb-8">
           <div className="flex border-b border-slate-100">
             <button 
@@ -202,7 +257,6 @@ function App() {
           </div>
 
           <div className="p-6 md:p-8">
-            {/* Settings Row (Only for generators) */}
             {mode !== 'history' && (
               <div className="flex flex-wrap gap-6 mb-6 items-center">
                  <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -222,7 +276,6 @@ function App() {
               </div>
             )}
 
-            {/* Input Areas */}
             {mode === 'text' && (
               <div className="flex flex-col sm:flex-row gap-4">
                 <input 
@@ -267,7 +320,6 @@ function App() {
           </div>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r mb-8 flex items-center gap-3 text-red-700">
              <AlertCircle size={20} />
@@ -275,14 +327,11 @@ function App() {
           </div>
         )}
 
-        {/* Results Area */}
         {isLoading ? (
-          // Loading Skeleton State
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
                <div className="h-8 w-1/3 bg-slate-200 rounded animate-pulse"></div>
                <div className="h-[550px] w-full bg-slate-100 rounded-xl relative overflow-hidden border border-slate-200">
-                  {/* Shimmer Effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-full h-full -translate-x-full animate-[shimmer_1.5s_infinite]"></div>
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 gap-3">
                       <Loader2 className="animate-spin text-indigo-400" size={48} />
@@ -302,13 +351,10 @@ function App() {
             </div>
           </div>
         ) : currentPattern ? (
-          // Results
           <div key={currentPattern.id} className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-[fadeIn_0.6s_ease-out]">
-            {/* Left: Preview */}
             <div className="lg:col-span-2 space-y-6">
                <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-slate-900">{t.previewTitle}</h2>
-                  {/* View Mode Tabs */}
                   <div className="flex bg-slate-100 p-1 rounded-lg">
                      <button 
                         onClick={() => setViewMode('pattern')}
@@ -331,37 +377,86 @@ function App() {
                   </div>
                </div>
                
-               {/* Dynamic View Content - Fixed Height Container */}
-               <div className="relative bg-slate-50 rounded-xl shadow-inner border border-slate-200 overflow-hidden h-[550px] flex flex-col">
+               <div className="relative bg-slate-50 rounded-xl shadow-inner border border-slate-200 overflow-hidden h-[550px] flex flex-col group">
                   
+                  {/* PAINT MODE TOOLBAR - FULL WIDTH BOTTOM */}
+                  {selectedColor && viewMode === 'pattern' && (
+                    <div className="absolute bottom-0 left-0 right-0 z-30 bg-slate-900/95 text-white p-4 backdrop-blur-md animate-in slide-in-from-bottom-full flex items-center justify-between shadow-lg">
+                       <div className="flex items-center gap-4">
+                          <div className="flex flex-col">
+                             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">当前模式</span>
+                             <span className="text-sm font-bold flex items-center gap-2">
+                                <Paintbrush size={14} className="text-yellow-400" /> 
+                                画笔填色
+                             </span>
+                          </div>
+                          <div className="h-8 w-px bg-white/20"></div>
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm ring-2 ring-white/20" style={{background: selectedColor}}></div>
+                             <div className="flex flex-col">
+                                <span className="text-[10px] text-slate-400">正在使用</span>
+                                <span className="text-sm font-bold">{getSelectedColorName()}</span>
+                             </div>
+                          </div>
+                          <div className="hidden sm:block text-xs text-slate-400 ml-4">
+                             👉 点击上方网格，将该颜色填充到格子中
+                          </div>
+                       </div>
+                       
+                       <button 
+                         onClick={() => setSelectedColor(null)}
+                         className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-bold transition-colors flex items-center gap-2"
+                       >
+                          <Check size={16} /> 完成
+                       </button>
+                    </div>
+                  )}
+
                   {viewMode === 'pattern' && (
-                    <div className="flex-1 w-full h-full overflow-hidden relative">
-                       {/* PixelGrid handles its own scrolling if needed */}
-                       <PixelGrid grid={currentPattern.grid} className="w-full h-full" />
+                    <div className={`flex-1 w-full h-full overflow-hidden relative ${selectedColor ? 'cursor-crosshair' : ''}`}>
+                       <PixelGrid 
+                          grid={currentPattern.grid} 
+                          className="w-full h-full" 
+                          onPixelClick={handlePixelClick}
+                       />
                     </div>
                   )}
 
                   {viewMode === 'original' && (
-                    <div className="flex-1 p-8 flex justify-center items-center w-full h-full">
+                    <div 
+                      className="flex-1 p-8 flex justify-center items-center w-full h-full cursor-zoom-in relative"
+                      onClick={() => setIsLightboxOpen(true)}
+                    >
                        <img 
                          src={currentPattern.imageUrl} 
                          className="max-w-full max-h-full object-contain shadow-lg rounded-lg bg-white" 
                          alt="original" 
                        />
+                       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          <span className="bg-black/60 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 backdrop-blur-sm">
+                             <Maximize2 size={16} /> {t.zoom}
+                          </span>
+                       </div>
                     </div>
                   )}
 
                   {viewMode === 'compare' && (
                     <div className="flex-1 p-4 w-full h-full flex flex-col">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-0">
-                          {/* Original */}
                           <div className="flex flex-col gap-2 h-full">
                              <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewOriginal}</span>
-                             <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden">
+                             <div 
+                                className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden cursor-zoom-in group/orig relative"
+                                onClick={() => setIsLightboxOpen(true)}
+                             >
                                 <img src={currentPattern.imageUrl} className="max-w-full max-h-full object-contain" alt="original" />
+                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/orig:opacity-100 transition-opacity pointer-events-none">
+                                   <div className="bg-black/50 p-2 rounded-full text-white backdrop-blur-sm">
+                                      <Maximize2 size={16} />
+                                   </div>
+                                </div>
                              </div>
                           </div>
-                          {/* Pattern */}
                           <div className="flex flex-col gap-2 h-full">
                              <span className="text-xs font-bold text-slate-500 uppercase text-center bg-slate-200/50 py-1 rounded shrink-0">{t.viewPattern}</span>
                              <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex-1 flex items-center justify-center overflow-hidden relative">
@@ -374,19 +469,20 @@ function App() {
                              </div>
                           </div>
                         </div>
-                        <div className="mt-3 text-center shrink-0">
-                           <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-bold">
-                              {t.compareTip}
-                           </span>
-                        </div>
                     </div>
                   )}
                </div>
             </div>
 
-            {/* Right: BOM */}
             <div className="lg:col-span-1">
-              <BillOfMaterials palette={currentPattern.palette} grid={currentPattern.grid} lang={lang} />
+              <BillOfMaterials 
+                palette={currentPattern.palette} 
+                grid={currentPattern.grid} 
+                lang={lang} 
+                onColorReplace={handleColorReplace}
+                onSelectColor={setSelectedColor}
+                selectedColor={selectedColor}
+              />
             </div>
           </div>
         ) : null}
